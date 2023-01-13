@@ -30,20 +30,24 @@ jobs:
       
       - name: Configure platform
         run: |
+          arduino-cli config init 
+          arduino-cli config set library.enable_unsafe_install true
           arduino-cli core update-index --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
           arduino-cli core install esp8266:esp8266 --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+          arduino-cli lib install "Adafruit NeoPixel"
+          arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncWebServer.git https://github.com/me-no-dev/ESPAsyncTCP.git
           
       # Compile
       
       - name: Compile sketch
         run: |
-          arduino-cli compile -b "esp8266:esp8266:nodemcuv2" -e ./sketch
+          arduino-cli compile -b "esp8266:esp8266:nodemcuv2" -e ./main
       
       # Move file to better place
 
       - name: Find compiled file
         run: |
-          cp ./sketch/build/*.*.*/*.ino.bin ./firmware-main.bin
+          cp ./main/build/*.*.*/*.ino.bin ./firmware-main.bin
 
       # Upload to artifacts
 
