@@ -302,7 +302,7 @@ void setup() {
 
 void loop() {
 
-  const int currentLightValue = digitalRead(lightPin);  // Modify brightnessValue
+  const int currentLightValue = analogRead(lightPin);  // Modify brightnessValue
   if (currentLightValue > brightnessValue) brightnessValue++;
   else brightnessValue--;
 
