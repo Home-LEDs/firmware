@@ -27,17 +27,23 @@ BearSSL::CertStore certStore;
 //                      <--- Settings --->
 
 // LEDs
+const int maxLEDBrigthness = 160;                                                         // Max LEDs brightness (default max is 255)
 const int numOfLEDs = 7;                                                                  // Number of leds on strip
 const int LEDpin = D3;                                                                    // Led strip pin
 Adafruit_NeoPixel LEDstrip = Adafruit_NeoPixel(numOfLEDs, LEDpin, NEO_GRB + NEO_KHZ800);  // Create strip objects
 
 const int numberOfPatterns = 1;  // Number of available patterns
-int setPatternNum = 0;           // Startup pattern number
+int setPatternNum = 4;           // Startup pattern number
 
-int brightness = 50;
+int brightness = 0;
 
 // Button
-const int buttonPin = 1;  // Button Pin
+const int buttonPin = 1;  // Button pin
+
+// Photoresistor
+const int lightPin = A0;        // Light detector pin
+const int maxLightValue = 50;   // Light detector value at max light
+const int minLightValue = 710;  // Light detector value at min light
 
 // WiFi
 const bool WiFi_UpdateCredentialsFile = false;  // Update network_config.txt in filesystem?
@@ -50,7 +56,7 @@ String ssidFromFile, passwordFromFile;
 const char* host = "github.com";  // Host to check connection, leave as is if using github
 const int httpsPort = 443;        // Host port, leave as is if using github
 
-const char* firmwareVer = "23.01.13-alpha2";                                                                         // Version number
+const char* firmwareVer = "13.01.23-alpha2";                                                                  // Version number
 const char* updaterVersionCtrlUrl = "https://raw.githubusercontent.com/Home-LEDs/firmware/main/version.txt";  // Link to version.txt
 
 const char* updaterFirmwareUrl = "https://raw.githubusercontent.com/Home-LEDs/firmware/main/firmware-main.bin";  // File to firmware.bin
@@ -246,14 +252,13 @@ void firmwareUpdate()  // Updater
   if (!strcmp(new_version.c_str(), firmwareVer)) {  // Check if version is the same
     updateStatus = 1;
     return;
-  } 
-  else if (!new_version.c_str() || new_version.c_str() == "") {
+  } else if (!new_version.c_str() || new_version.c_str() == "") {
     updateStatus = 0;
     return;
   }
 
-  updateStatus = 2;                                                             // Update status for display
-  updateLEDPattern();                                                           // Init updater LED pattern
+  updateStatus = 2;    // Update status for display
+  updateLEDPattern();  // Init updater LED pattern
 
   ESPhttpUpdate.setLedPin(LED_BUILTIN);
   t_httpUpdate_return ret = ESPhttpUpdate.update(client, updaterFirmwareUrl);  // Update firmware
@@ -264,7 +269,7 @@ void firmwareUpdate()  // Updater
 
 //                      <--- Setup and loop --->
 
-int previousButtonState;
+int previousButtonState, brightnessValue = 0;
 
 void setup() {
   Serial.begin(9600);  // Begin serial
@@ -296,6 +301,12 @@ void setup() {
 
 
 void loop() {
+
+  const int currentLightValue = digitalRead(lightPin);  // Modify brightnessValue
+  if (currentLightValue > brightnessValue) brightnessValue++;
+  else brightnessValue--;
+
+  brightness = ((minLightValue - brightnessValue + maxLightValue) / (minLightValue - maxLightValue)) * maxLEDBrigthness;  // Invert brigthness value and calculate brigthness
 
   updateLEDPattern();  // Update animations on every loop
 
