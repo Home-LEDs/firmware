@@ -57,7 +57,7 @@ String ssidFromFile, passwordFromFile;
 const char* host = "github.com";  // Host to check connection, leave as is if using github
 const int httpsPort = 443;        // Host port, leave as is if using github
 
-const char* firmwareVer = "13.01.23";                                                                  // Version number
+const char* firmwareVer = "23.01.13";                                                                  // Version number
 const char* updaterVersionCtrlUrl = "https://raw.githubusercontent.com/Home-LEDs/firmware/main/version.txt";  // Link to version.txt
 
 const char* updaterFirmwareUrl = "https://raw.githubusercontent.com/Home-LEDs/firmware/main/firmware-main.bin";  // File to firmware.bin
