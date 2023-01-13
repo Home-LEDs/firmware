@@ -50,7 +50,7 @@ String ssidFromFile, passwordFromFile;
 const char* host = "github.com";  // Host to check connection, leave as is if using github
 const int httpsPort = 443;        // Host port, leave as is if using github
 
-const char* firmwareVer = "23.01.13-alpha1";                                                                         // Version number
+const char* firmwareVer = "23.01.13-alpha2";                                                                         // Version number
 const char* updaterVersionCtrlUrl = "https://raw.githubusercontent.com/Home-LEDs/firmware/main/version.txt";  // Link to version.txt
 
 const char* updaterFirmwareUrl = "https://raw.githubusercontent.com/Home-LEDs/firmware/main/firmware-main.bin";  // File to firmware.bin
@@ -289,10 +289,9 @@ void setup() {
     if (millis() > 15000) wiFiInit(true);  // Check if connected, if not AP mode
     delay(100);
   }
-
-  if (WiFi.status() == WL_CONNECTED) firmwareUpdate();
-
   digitalWrite(LED_BUILTIN, LOW);
+  if (WiFi.status() == WL_CONNECTED) firmwareUpdate();
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 
