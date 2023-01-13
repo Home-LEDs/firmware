@@ -27,23 +27,24 @@ BearSSL::CertStore certStore;
 //                      <--- Settings --->
 
 // LEDs
-const int maxLEDBrigthness = 160;                                                         // Max LEDs brightness (default max is 255)
+const int maxLEDBrightness = 80;                                                          // Max LEDs brightness (default max is 255, change to get some other brightness changing)
 const int numOfLEDs = 7;                                                                  // Number of leds on strip
 const int LEDpin = D3;                                                                    // Led strip pin
 Adafruit_NeoPixel LEDstrip = Adafruit_NeoPixel(numOfLEDs, LEDpin, NEO_GRB + NEO_KHZ800);  // Create strip objects
 
 const int numberOfPatterns = 1;  // Number of available patterns
-int setPatternNum = 4;           // Startup pattern number
+int setPatternNum = 0;           // Startup pattern number
 
-int brightness = 0;
+int brightness = 5;
 
 // Button
 const int buttonPin = 1;  // Button pin
 
 // Photoresistor
-const int lightPin = A0;        // Light detector pin
-const int maxLightValue = 50;   // Light detector value at max light
-const int minLightValue = 710;  // Light detector value at min light
+const int lightPin = A0;                  // Light detector pin
+const int maxLightValue = 0;              // Light detector value at max light (change to get some other brightness changing)
+const int minLightValue = 1024;           // Light detector value at min light (change to get some other brightness changing)
+const int brightnessUpdateInterval = 10;  // How often update brightness
 
 // WiFi
 const bool WiFi_UpdateCredentialsFile = false;  // Update network_config.txt in filesystem?
@@ -76,7 +77,8 @@ void LEDsInit()  // Set LEDs and initialize them
   LEDstrip.begin();  // Begin
 
   // Pattern of startup screen
-  LEDstrip.clear();  // Clear
+  LEDstrip.fill(LEDstrip.Color(brightness, brightness, brightness));  // Clear
+  LEDstrip.show();
 }
 
 void updateLEDPattern(bool prev = false, bool next = false) {
@@ -86,20 +88,21 @@ void updateLEDPattern(bool prev = false, bool next = false) {
     animationProgress = 0;
     lastLEDUpdated = 0;
     i = 0;
-    if (prev) setPatternNum--;  // Next pattern
-    else setPatternNum++;       // Prev pattern
+    if (prev) setPatternNum--;  // Prev pattern
+    else setPatternNum++;       // Next pattern
   }
 
   const unsigned long currentMillis = millis();
 
 
-  if (updateStatus == 2) {                    // Updater pattern
-    for (int p = 0; p < numOfLEDs; p++) {     // For every strip
-      if (p % 2 == 0) {                       // For half of LEDs
-        LEDstrip.setPixelColor(p, 0, 30, 0);  // Set half pixels to green
+  if (updateStatus == 2) {                     // Updater pattern
+    for (int p = 0; p < numOfLEDs; p++) {      // For every strip
+      if (p % 2 == 0) {                        // For half of LEDs
+        LEDstrip.setPixelColor(p, 10, 10, 0);  // Set half pixels to yellow
       } else {
-        LEDstrip.setPixelColor(p, 0, 0, 30);  // Set half pixels to blue
+        LEDstrip.setPixelColor(p, 10, 0, 0);  // Set half pixels to red
       }
+      LEDstrip.show();
       delay(100);
     }
   }
@@ -126,24 +129,28 @@ void updateLEDPattern(bool prev = false, bool next = false) {
 
   else if (setPatternNum == 4) {  // 1st pattern
 
-    if (next || prev || (animationProgress == 0 && currentMillis - previousLEDMillis >= 1000)) {  // If animation starting or 1sec passed
+    if (next || prev || animationProgress == 0) {  // If 1st stage
       for (int p = 0; p < numOfLEDs; p++) {
         if (p % 2 == 0) LEDstrip.setPixelColor(p, 0, brightness, 0);  // Set half LEDs color to green
         else LEDstrip.setPixelColor(p, 0, 0, brightness);             // Set half LEDs color to blue
         LEDstrip.show();
       }
-      previousLEDMillis = currentMillis;
-      animationProgress = 1;  // 2nd step
+      if (currentMillis - previousLEDMillis >= 1000) {
+        previousLEDMillis = currentMillis;
+        animationProgress = 1;  // 2nd step
+      }
     }
 
-    else if (animationProgress == 1 && currentMillis - previousLEDMillis >= 1000) {  // If next stage and 1sec passed
+    else if (animationProgress == 1) {  // If next stage
       for (int p = 0; p < numOfLEDs; p++) {
         if (p % 2 == 0) LEDstrip.setPixelColor(p, 0, 0, brightness);  // Set half LEDs color to blue
         else LEDstrip.setPixelColor(p, 0, brightness, 0);             // Set half LEDs color to green
         LEDstrip.show();
       }
-      previousLEDMillis = currentMillis;
-      animationProgress = 0;  // 1st step again
+      if (currentMillis - previousLEDMillis >= 1000) {
+        previousLEDMillis = currentMillis;
+        animationProgress = 0;  // 1st step again
+      }
     }
   }
 
@@ -166,8 +173,7 @@ void wiFiInit(bool forceAP = false) {
     ssidFromFile.trim();  // Delete spaces at the beginning and end
     passwordFromFile.trim();
 
-    if (strcmp(ssidFromFile.c_str(), "")) {  // Check if SSID provided
-
+    if (strcmp(ssidFromFile.c_str(), "")) {                        // Check if SSID provided
       WiFi.begin(ssidFromFile.c_str(), passwordFromFile.c_str());  // If yes, try to connect
       return;
     }
@@ -257,23 +263,24 @@ void firmwareUpdate()  // Updater
     return;
   }
 
-  updateStatus = 2;    // Update status for display
+  updateStatus = 2;    // Update status
   updateLEDPattern();  // Init updater LED pattern
 
   ESPhttpUpdate.setLedPin(LED_BUILTIN);
   t_httpUpdate_return ret = ESPhttpUpdate.update(client, updaterFirmwareUrl);  // Update firmware
-  if (ret) {
-    ESP.restart();
+  switch (ret)
+  case HTTP_UPDATE_FAILED:
+  {
+    updateStatus = -1;
   }
 }
 
 //                      <--- Setup and loop --->
 
-int previousButtonState, brightnessValue = 0;
+int previousButtonState, brightnessValue;
+unsigned long lastBrightnessUpdate;
 
 void setup() {
-  Serial.begin(9600);  // Begin serial
-  Serial.println("[INFO] Start!");
 
   if (!SPIFFS.begin()) {  // Begin filesystem
     ESP.restart();
@@ -295,18 +302,22 @@ void setup() {
     delay(100);
   }
   digitalWrite(LED_BUILTIN, LOW);
-  if (WiFi.status() == WL_CONNECTED) firmwareUpdate();
+  firmwareUpdate();
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
 
 void loop() {
 
-  const int currentLightValue = analogRead(lightPin);  // Modify brightnessValue
-  if (currentLightValue > brightnessValue) brightnessValue++;
-  else brightnessValue--;
+  if (millis() - lastBrightnessUpdate >= brightnessUpdateInterval) {
+    const int currentLightValue = analogRead(lightPin);  // Modify brightnessValue
+    if (currentLightValue > brightnessValue) brightnessValue++;
+    else brightnessValue--;
+    brightness = (minLightValue - brightnessValue + maxLightValue) / (minLightValue - maxLightValue * 1.00) * maxLEDBrightness;  // Invert brightness value and calculate brigthness
+    lastBrightnessUpdate = millis();
+  }
 
-  brightness = ((minLightValue - brightnessValue + maxLightValue) / (minLightValue - maxLightValue)) * maxLEDBrigthness;  // Invert brigthness value and calculate brigthness
+
 
   updateLEDPattern();  // Update animations on every loop
 
