@@ -12,7 +12,6 @@ jobs:
 
   compile:
 
-    needs: [ sketch-release ]
     runs-on: ubuntu-latest
     
     steps:
